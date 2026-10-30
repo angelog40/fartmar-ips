@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AiAssistantController;
 
 // Endpoint de salud para Docker Compose y monitoreo (Sección 5)
 Route::get('/health', function () {
@@ -52,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/transfers/{transfer}/dispatch', [TransferController::class, 'dispatchTransfer']);
     Route::post('/transfers/{transfer}/receive', [TransferController::class, 'receive']);
     Route::post('/transfers/{transfer}/cancel', [TransferController::class, 'cancel']);
+    Route::post('/ai/ask', [AiAssistantController::class, 'ask']);
 
     // Bitácora de Auditoría de Accesos (RN-10)
     Route::get('/audit-logs', function (Request $request) {
