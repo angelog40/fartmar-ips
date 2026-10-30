@@ -15,5 +15,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    pool: 'threads', // Fuerza el pool de hilos de Node en lugar de forks
   },
 })
