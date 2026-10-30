@@ -274,4 +274,52 @@ class FartmarDomainTest extends TestCase
         $this->assertTrue($pii->json('data.blocked'));
         $this->assertEquals('PATIENT_PII_RESTRICTED_RN10', $pii->json('data.reason'));
     }
+
+    /**
+     * RN-03: Caso de concurrencia / contención sobre la ÚLTIMA unidad disponible en inventario.
+     * Si solo queda 1 unidad vigente y llegan dos solicitudes por esa última unidad,
+     * la primera agota el stock (queda en 0) y la segunda es rechazada con 422 sin dejar stock negativo.
+     */
+    public function test_concurrency_contention_over_last_single_available_unit_prevents_negative_stock(): void
+    {
+        $auxiliar = User::where('email', 'auxiliar@fartmar.test')->firstOrFail();
+        $regente = User::where('email', 'regente@fartmar.test')->firstOrFail();
+        $central = Warehouse::where('code', 'BOD-CENTRAL')->firstOrFail();
+        $acetaminofen = Product::where('sku', 'MED-001')->firstOrFail();
+        $prescription = Prescription::whereHas('items', fn ($q) => $q->where('product_id', $acetaminofen->id))->firstOrFail();
+
+        $batch20d = Batch::where('batch_number', 'LOTE-ACE-20D')->firstOrFail();
+        $batch180d = Batch::where('batch_number', 'LOTE-ACE-180D')->firstOrFail();
+
+        // Dejamos exactamente 1 ÚNICA unidad vigente en toda la bodega (el lote vencido tiene 40 pero no es dispensable)
+        Inventory::where('warehouse_id', $central->id)->where('batch_id', $batch20d->id)->update(['quantity' => 1]);
+        Inventory::where('warehouse_id', $central->id)->where('batch_id', $batch180d->id)->update(['quantity' => 0]);
+
+        // Solicitud A (Auxiliar): Toma la última unidad disponible bajo bloqueo SELECT ... FOR UPDATE
+        Sanctum::actingAs($auxiliar);
+        $firstAttempt = $this->postJson('/api/dispensations', [
+            'idempotency_key' => 'idem-last-unit-attempt-1',
+            'prescription_id' => $prescription->id,
+            'warehouse_id' => $central->id,
+            'items' => [
+                ['product_id' => $acetaminofen->id, 'quantity' => 1],
+            ],
+        ]);
+        $firstAttempt->assertCreated();
+
+        // Solicitud B (Regente): Intenta dispensar 1 unidad inmediatamente después sobre el mismo lote agotado
+        Sanctum::actingAs($regente);
+        $secondAttempt = $this->postJson('/api/dispensations', [
+            'idempotency_key' => 'idem-last-unit-attempt-2',
+            'prescription_id' => $prescription->id,
+            'warehouse_id' => $central->id,
+            'items' => [
+                ['product_id' => $acetaminofen->id, 'quantity' => 1],
+            ],
+        ]);
+
+        // Debe fallar con 422 (RN-03) y el stock jamás debe bajar de 0
+        $secondAttempt->assertStatus(422);
+        $this->assertEquals(0, Inventory::where('warehouse_id', $central->id)->where('batch_id', $batch20d->id)->value('quantity'));
+    }
 }

@@ -88,6 +88,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run Vitest Frontend Tests
+        run: npm test 
+
       - name: Build Production Bundle
         run: npm run build
 

@@ -274,3 +274,32 @@ npm run build
 ### Cómo se Garantiza la Concurrencia (`RN-03`) y la Idempotencia (`RN-09`) en el Código
 * **Bloqueo Pesimista en PostgreSQL (`DispensationService.php` líneas 89 y 146):** Dentro de `DB::transaction()`, tanto la prescripción como las filas de `inventories` se consultan con `->lockForUpdate()` (`SELECT ... FOR UPDATE`). Si dos auxiliares solicitan simultáneamente la última unidad disponible de un lote, PostgreSQL serializa el acceso a nivel de fila: la primera transacción descuenta el stock y la segunda lee el nuevo saldo actualizado (`0`), abortando con excepción `RN-03` y respaldada además por el constraint SQL `CHECK (quantity >= 0)`.
 * **Idempotencia Transaccional (`DispensationService.php` líneas 71-86):** Cada solicitud incluye un `idempotency_key` con índice `UNIQUE` en la tabla `dispensations`. Antes de bloquear inventario, el servicio verifica si la llave ya fue procesada y retorna el registro original sin duplicar cargos ni movimientos en el Kardex.
+
+---
+
+## 10. Decisiones de Diseño (Trade-offs), Supuestos y Alcance (Out of Scope)
+
+### 10.1. Tres Compromisos de Diseño (Trade-offs)
+
+1. **Bloqueo Pesimista (`SELECT ... FOR UPDATE`) vs. Bloqueo Optimista (Versionamiento de fila):**
+   * **Decisión:** Se eligió bloqueo pesimista (`->lockForUpdate()` dentro de `DB::transaction`) en `DispensationService` y `TransferService`.
+   * **Trade-off:** Sacrifica una fracción de rendimiento bajo contención extrema (las peticiones concurrentes sobre el mismo lote esperan en fila en PostgreSQL) a cambio de **consistencia fuerte inmediata** y cero fallos por reintentos en ventanilla clínica, garantizando que nunca se dispense una unidad inexistente (**RN-03**).
+2. **Arquitectura IA con Herramientas Predefinidas (Function Calling Acotado) vs. Generación Dinámica de SQL (Text-to-SQL):**
+   * **Decisión:** El `AiInventoryAssistantService` solo puede invocar 4 métodos PHP de solo lectura previamente programados, más un modo `mock` determinista por defecto.
+   * **Trade-off:** Limita la flexibilidad del asistente para responder preguntas ad-hoc no previstas, pero **elimina al 100% el riesgo de inyección SQL por IA, alucinaciones sobre saldos clínicos y fugas de PII de pacientes (RN-10)**, además de permitir evaluar la prueba sin depender de una API Key comercial.
+3. **Almacenamiento Materializado de Saldo (`inventories.quantity`) + Kardex Inmutable (`kardex_movements`) vs. Cálculo al Vuelo (*Event Sourcing* puro):**
+   * **Decisión:** Mantener el saldo actual materializado en la tabla `inventories` protegido por constraint `CHECK (quantity >= 0)` y registrar simultáneamente cada evento en `kardex_movements` protegido por el trigger `trg_kardex_immutable`.
+   * **Trade-off:** Requiere mantener ambas tablas sincronizadas transaccionalmente dentro de los servicios de dominio, pero permite consultas FEFO y alertas de stock mínimo (**RN-11**) en milisegundos sin tener que sumar millones de registros históricos del Kardex en cada lectura.
+
+### 10.2. Supuestos Asumidos
+
+1. **Doble firma síncrona en Control Especial (RN-05):** Se asumió que en la ventanilla de farmacia el segundo `regente_farmacia` autoriza la entrega de medicamentos de control especial (ej. Morfina) en el mismo acto de dispensación ingresando sus credenciales de autorización (`authorizer_email` y `authorizer_password`).
+2. **Cálculo de Stock Mínimo sobre Existencias Vigentes (RN-11):** Se asumió que las unidades de lotes vencidos físicamente presentes en bodega (pendientes de destrucción sanitaria) **no** cuentan como stock útil; por tanto, la alerta de stock mínimo se dispara comparando únicamente la suma de lotes no vencidos contra `min_stock`.
+3. **Discrepancias en Recepción de Traslados (RN-07):** Cuando la bodega destino recibe menos unidades de las despachadas (`received_qty < dispatched_qty`), al inventario destino ingresa únicamente la cantidad real recibida y la diferencia queda registrada en `transfer_items.discrepancy_qty` con estado `RECIBIDO_PARCIAL` para investigación administrativa, sin devolver automáticamente las unidades faltantes a la bodega origen (ya que salieron físicamente en el despacho).
+4. **Enmascaramiento de PII exclusivo para rol de supervisión externa (`auditor` - RN-10):** Se asumió que los roles operativos clínicos (`auxiliar_farmacia`, `regente_farmacia`, `medico`) necesitan ver el nombre y documento completo del paciente para validar su identidad física al entregar medicamentos, mientras que el rol `auditor` visualiza toda la información personal enmascarada.
+
+### 10.3. Qué Quedó Fuera del Alcance (Out of Scope) y Por Qué
+
+1. **Flujo posterior de conciliación/ajuste automático de discrepancias en traslados:** Se registra la discrepancia (`discrepancy_qty` y `discrepancy_reason`) y el estado `RECIBIDO_PARCIAL` como exige **RN-07**, pero el acta de baja o reintegro posterior se delegó al módulo de ajustes de Kardex del Regente (**RN-06**) para no sobre-complejizar la máquina de estados.
+2. **Paginación con cursor y filtros avanzados por rango de fechas en el Frontend:** Se acotó la vista de Kardex y Auditoría a los últimos 100 movimientos para priorizar una interfaz de página única rápida y enfocada en demostrar las reglas críticas en vivo.
+3. **Renovación automática de tokens (Refresh Tokens) y 2FA por hardware:** Se utilizó autenticación Bearer mediante Laravel Sanctum por ser el estándar ligero e idóneo para demostrar control de acceso basado en roles (RBAC) dentro del tiempo de la prueba.
