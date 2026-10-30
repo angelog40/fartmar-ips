@@ -18,8 +18,8 @@ class CorrelationIdMiddleware
         // Contexto seguro en logs sin incluir PII de pacientes (RN-10)
         Log::withContext([
             'correlation_id' => $correlationId,
-            'user_id'        => $request->user()?->id,
-            'path'           => $request->path(),
+            'user_id' => $request->user()?->id,
+            'path' => $request->path(),
         ]);
 
         /** @var Response $response */

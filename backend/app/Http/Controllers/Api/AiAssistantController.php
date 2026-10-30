@@ -20,7 +20,7 @@ class AiAssistantController extends Controller
         $result = $this->aiService->ask($validated['question']);
 
         return response()->json([
-            'data'           => $result,
+            'data' => $result,
             'correlation_id' => $request->attributes->get('correlation_id'),
         ]);
     }

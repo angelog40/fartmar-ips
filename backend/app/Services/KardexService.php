@@ -27,16 +27,16 @@ class KardexService
         ?string $reason = null
     ): KardexMovement {
         return KardexMovement::create([
-            'warehouse_id'   => $warehouseId,
-            'product_id'     => $productId,
-            'batch_id'       => $batchId,
-            'type'           => $type,
-            'quantity'       => $quantity,
-            'balance_after'  => $balanceAfter,
+            'warehouse_id' => $warehouseId,
+            'product_id' => $productId,
+            'batch_id' => $batchId,
+            'type' => $type,
+            'quantity' => $quantity,
+            'balance_after' => $balanceAfter,
             'reference_type' => $reference ? class_basename($reference) : null,
-            'reference_id'   => $reference?->getKey(),
-            'reason'         => $reason,
-            'user_id'        => $userId,
+            'reference_id' => $reference?->getKey(),
+            'reason' => $reason,
+            'user_id' => $userId,
         ]);
     }
 
@@ -73,12 +73,12 @@ class KardexService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$inventory) {
+            if (! $inventory) {
                 $inventory = Inventory::create([
                     'warehouse_id' => $warehouseId,
-                    'product_id'   => $productId,
-                    'batch_id'     => $batchId,
-                    'quantity'     => 0,
+                    'product_id' => $productId,
+                    'batch_id' => $batchId,
+                    'quantity' => 0,
                 ]);
             }
 

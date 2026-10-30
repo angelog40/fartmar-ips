@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AiAssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DispensationController;
 use App\Http\Controllers\Api\InventoryController;
@@ -9,14 +10,14 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AiAssistantController;
 
 // Endpoint de salud para Docker Compose y monitoreo (Sección 5)
 Route::get('/health', function () {
     DB::connection()->getPdo();
+
     return response()->json([
-        'status'    => 'ok',
-        'service'   => 'fartmar-ips-api',
+        'status' => 'ok',
+        'service' => 'fartmar-ips-api',
         'timestamp' => now()->toIso8601String(),
     ]);
 });
@@ -57,9 +58,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Bitácora de Auditoría de Accesos (RN-10)
     Route::get('/audit-logs', function (Request $request) {
-        if (!in_array($request->user()->role, ['auditor', 'admin', 'regente_farmacia'], true)) {
+        if (! in_array($request->user()->role, ['auditor', 'admin', 'regente_farmacia'], true)) {
             return response()->json(['message' => 'No autorizado para ver bitácora de auditoría.'], 403);
         }
+
         return response()->json([
             'data' => AuditLog::with('user:id,name,email,role')->orderByDesc('id')->limit(100)->get(),
         ]);

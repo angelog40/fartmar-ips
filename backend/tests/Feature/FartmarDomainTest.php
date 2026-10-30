@@ -44,8 +44,8 @@ class FartmarDomainTest extends TestCase
         $response = $this->postJson('/api/dispensations', [
             'idempotency_key' => 'idem-fefo-test-001',
             'prescription_id' => $prescription->id,
-            'warehouse_id'    => $central->id,
-            'items'           => [
+            'warehouse_id' => $central->id,
+            'items' => [
                 ['product_id' => $acetaminofen->id, 'quantity' => 30],
             ],
         ]);
@@ -82,8 +82,8 @@ class FartmarDomainTest extends TestCase
         $payload = [
             'idempotency_key' => 'idem-retry-key-999',
             'prescription_id' => $prescription->id,
-            'warehouse_id'    => $central->id,
-            'items'           => [
+            'warehouse_id' => $central->id,
+            'items' => [
                 ['product_id' => $acetaminofen->id, 'quantity' => 10],
             ],
         ];
@@ -115,8 +115,8 @@ class FartmarDomainTest extends TestCase
         $response = $this->postJson('/api/dispensations', [
             'idempotency_key' => 'idem-over-prescribed',
             'prescription_id' => $prescription->id,
-            'warehouse_id'    => $central->id,
-            'items'           => [
+            'warehouse_id' => $central->id,
+            'items' => [
                 ['product_id' => $acetaminofen->id, 'quantity' => 35],
             ],
         ]);
@@ -140,12 +140,12 @@ class FartmarDomainTest extends TestCase
 
         // 1. Falla si el mismo regente intenta auto-autorizarse
         $selfAuth = $this->postJson('/api/dispensations', [
-            'idempotency_key'     => 'idem-morfina-fail',
-            'prescription_id'     => $prescription->id,
-            'warehouse_id'        => $central->id,
-            'authorizer_email'    => $regente1->email,
+            'idempotency_key' => 'idem-morfina-fail',
+            'prescription_id' => $prescription->id,
+            'warehouse_id' => $central->id,
+            'authorizer_email' => $regente1->email,
             'authorizer_password' => 'password123',
-            'items'               => [
+            'items' => [
                 ['product_id' => $morfina->id, 'quantity' => 2],
             ],
         ]);
@@ -153,12 +153,12 @@ class FartmarDomainTest extends TestCase
 
         // 2. Pasa cuando autoriza un SEGUNDO regente distinto (regente2)
         $validAuth = $this->postJson('/api/dispensations', [
-            'idempotency_key'     => 'idem-morfina-ok',
-            'prescription_id'     => $prescription->id,
-            'warehouse_id'        => $central->id,
-            'authorizer_email'    => $regente2->email,
+            'idempotency_key' => 'idem-morfina-ok',
+            'prescription_id' => $prescription->id,
+            'warehouse_id' => $central->id,
+            'authorizer_email' => $regente2->email,
             'authorizer_password' => 'password123',
-            'items'               => [
+            'items' => [
                 ['product_id' => $morfina->id, 'quantity' => 2],
             ],
         ]);
@@ -181,13 +181,13 @@ class FartmarDomainTest extends TestCase
         // 1. Regente 1 solicita traslado de 20 unidades de Central a Urgencias
         Sanctum::actingAs($regente1);
         $createResp = $this->postJson('/api/transfers', [
-            'origin_warehouse_id'      => $central->id,
+            'origin_warehouse_id' => $central->id,
             'destination_warehouse_id' => $urgencias->id,
-            'submit_immediately'       => true,
-            'items'                    => [
+            'submit_immediately' => true,
+            'items' => [
                 [
-                    'product_id'    => $acetaminofen->id,
-                    'batch_id'      => $batch180d->id,
+                    'product_id' => $acetaminofen->id,
+                    'batch_id' => $batch180d->id,
                     'requested_qty' => 20,
                 ],
             ],
@@ -210,8 +210,8 @@ class FartmarDomainTest extends TestCase
         $receiveResp = $this->postJson("/api/transfers/{$transferId}/receive", [
             'items' => [
                 [
-                    'transfer_item_id'   => $transferItemId,
-                    'received_qty'       => 18,
+                    'transfer_item_id' => $transferItemId,
+                    'received_qty' => 18,
                     'discrepancy_reason' => '2 blísteres averiados en transporte interno',
                 ],
             ],
@@ -250,7 +250,7 @@ class FartmarDomainTest extends TestCase
         $this->assertStringContainsString('*', $firstPatient['document_number']);
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $auditor->id,
-            'action'  => 'VIEW_PATIENT_PRESCRIPTION',
+            'action' => 'VIEW_PATIENT_PRESCRIPTION',
         ]);
     }
 

@@ -21,19 +21,19 @@ class DispensationController extends Controller
             ->limit(50)
             ->get()
             ->map(fn (Dispensation $d) => [
-                'id'              => $d->id,
+                'id' => $d->id,
                 'idempotency_key' => $d->idempotency_key,
                 'prescription_id' => $d->prescription_id,
-                'warehouse_name'  => $d->warehouse->name,
-                'dispensed_by'    => $d->dispenser->name,
-                'authorized_by'   => $d->authorizer?->name,
-                'created_at'      => $d->created_at?->toIso8601String(),
-                'patient'         => (new PatientResource($d->patient))->toArray($request),
-                'items'           => $d->items->map(fn ($i) => [
-                    'product_name'    => $i->product->name,
-                    'batch_number'    => $i->batch->batch_number,
+                'warehouse_name' => $d->warehouse->name,
+                'dispensed_by' => $d->dispenser->name,
+                'authorized_by' => $d->authorizer?->name,
+                'created_at' => $d->created_at?->toIso8601String(),
+                'patient' => (new PatientResource($d->patient))->toArray($request),
+                'items' => $d->items->map(fn ($i) => [
+                    'product_name' => $i->product->name,
+                    'batch_number' => $i->batch->batch_number,
                     'expiration_date' => $i->batch->expiration_date->toDateString(),
-                    'quantity'        => $i->quantity,
+                    'quantity' => $i->quantity,
                 ]),
             ]);
 
@@ -43,8 +43,8 @@ class DispensationController extends Controller
     public function previewFefo(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'warehouse_id'  => ['required', 'integer', 'exists:warehouses,id'],
-            'product_id'    => ['required', 'integer', 'exists:products,id'],
+            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'product_id' => ['required', 'integer', 'exists:products,id'],
             'requested_qty' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -60,32 +60,32 @@ class DispensationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'idempotency_key'     => ['required', 'string', 'max:100'],
-            'prescription_id'     => ['required', 'integer', 'exists:prescriptions,id'],
-            'warehouse_id'        => ['required', 'integer', 'exists:warehouses,id'],
-            'authorizer_email'    => ['nullable', 'email'],
+            'idempotency_key' => ['required', 'string', 'max:100'],
+            'prescription_id' => ['required', 'integer', 'exists:prescriptions,id'],
+            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'authorizer_email' => ['nullable', 'email'],
             'authorizer_password' => ['nullable', 'string'],
-            'authorized_by'       => ['nullable', 'integer'],
-            'items'               => ['required', 'array', 'min:1'],
-            'items.*.product_id'  => ['required', 'integer', 'exists:products,id'],
-            'items.*.quantity'    => ['required', 'integer', 'min:1'],
+            'authorized_by' => ['nullable', 'integer'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
         $dispensation = $this->dispensationService->dispense($validated, $request->user());
 
         AuditLog::create([
-            'user_id'        => $request->user()->id,
-            'patient_id'     => $dispensation->patient_id,
-            'action'         => 'DISPENSE_MEDICATION',
-            'resource_type'  => 'Dispensation',
-            'resource_id'    => $dispensation->id,
+            'user_id' => $request->user()->id,
+            'patient_id' => $dispensation->patient_id,
+            'action' => 'DISPENSE_MEDICATION',
+            'resource_type' => 'Dispensation',
+            'resource_id' => $dispensation->id,
             'correlation_id' => $request->attributes->get('correlation_id'),
-            'ip_address'     => $request->ip(),
+            'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
             'message' => 'Dispensación procesada exitosamente bajo FEFO.',
-            'data'    => $dispensation,
+            'data' => $dispensation,
         ], 201);
     }
 }

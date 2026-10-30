@@ -20,7 +20,7 @@ class TransferService
      */
     public function create(array $payload, User $actor): Transfer
     {
-        if (!in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
+        if (! in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
             throw new DomainException('No tiene permisos para crear traslados.');
         }
 
@@ -32,12 +32,12 @@ class TransferService
 
         return DB::transaction(function () use ($payload, $actor, $initialStatus) {
             $transfer = Transfer::create([
-                'code'                     => 'TR-' . strtoupper(Str::random(8)),
-                'origin_warehouse_id'      => $payload['origin_warehouse_id'],
+                'code' => 'TR-'.strtoupper(Str::random(8)),
+                'origin_warehouse_id' => $payload['origin_warehouse_id'],
                 'destination_warehouse_id' => $payload['destination_warehouse_id'],
-                'status'                   => $initialStatus,
-                'requested_by'             => $actor->id,
-                'observations'             => $payload['observations'] ?? null,
+                'status' => $initialStatus,
+                'requested_by' => $actor->id,
+                'observations' => $payload['observations'] ?? null,
             ]);
 
             foreach ($payload['items'] as $item) {
@@ -51,9 +51,9 @@ class TransferService
                 }
 
                 TransferItem::create([
-                    'transfer_id'   => $transfer->id,
-                    'product_id'    => $item['product_id'],
-                    'batch_id'      => $item['batch_id'],
+                    'transfer_id' => $transfer->id,
+                    'product_id' => $item['product_id'],
+                    'batch_id' => $item['batch_id'],
                     'requested_qty' => $item['requested_qty'],
                 ]);
             }
@@ -72,6 +72,7 @@ class TransferService
         }
 
         $transfer->update(['status' => 'SOLICITADO']);
+
         return $transfer->fresh(['items.product', 'items.batch', 'originWarehouse', 'destinationWarehouse']);
     }
 
@@ -94,7 +95,7 @@ class TransferService
         }
 
         $transfer->update([
-            'status'      => 'APROBADO',
+            'status' => 'APROBADO',
             'approved_by' => $actor->id,
         ]);
 
@@ -106,7 +107,7 @@ class TransferService
      */
     public function dispatch(Transfer $transfer, User $actor): Transfer
     {
-        if (!in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
+        if (! in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
             throw new DomainException('No tiene permisos para despachar traslados.');
         }
 
@@ -128,7 +129,7 @@ class TransferService
                     ->lockForUpdate()
                     ->first();
 
-                if (!$inventory || $inventory->quantity < $item->requested_qty) {
+                if (! $inventory || $inventory->quantity < $item->requested_qty) {
                     throw new DomainException("RN-03: Stock insuficiente en bodega origen para el lote {$item->batch->batch_number}.");
                 }
 
@@ -152,7 +153,7 @@ class TransferService
             }
 
             $transfer->update([
-                'status'        => 'EN_TRANSITO',
+                'status' => 'EN_TRANSITO',
                 'dispatched_by' => $actor->id,
             ]);
 
@@ -165,7 +166,7 @@ class TransferService
      */
     public function receive(Transfer $transfer, array $receivedItemsPayload, User $actor): Transfer
     {
-        if (!in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
+        if (! in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
             throw new DomainException('No tiene permisos para recibir traslados.');
         }
 
@@ -194,8 +195,8 @@ class TransferService
                 }
 
                 $item->update([
-                    'received_qty'       => $receivedQty,
-                    'discrepancy_qty'    => $discrepancyQty,
+                    'received_qty' => $receivedQty,
+                    'discrepancy_qty' => $discrepancyQty,
                     'discrepancy_reason' => $discrepancyQty > 0 ? ($discrepancyReason ?? 'Faltante en recepción pendiente de resolución') : null,
                 ]);
 
@@ -206,12 +207,12 @@ class TransferService
                         ->lockForUpdate()
                         ->first();
 
-                    if (!$destInventory) {
+                    if (! $destInventory) {
                         $destInventory = Inventory::create([
                             'warehouse_id' => $transfer->destination_warehouse_id,
-                            'product_id'   => $item->product_id,
-                            'batch_id'     => $item->batch_id,
-                            'quantity'     => 0,
+                            'product_id' => $item->product_id,
+                            'batch_id' => $item->batch_id,
+                            'quantity' => 0,
                         ]);
                     }
 
@@ -234,7 +235,7 @@ class TransferService
             }
 
             $transfer->update([
-                'status'      => $hasDiscrepancy ? 'RECIBIDO_PARCIAL' : 'RECIBIDO',
+                'status' => $hasDiscrepancy ? 'RECIBIDO_PARCIAL' : 'RECIBIDO',
                 'received_by' => $actor->id,
             ]);
 
@@ -247,11 +248,12 @@ class TransferService
      */
     public function cancel(Transfer $transfer, User $actor): Transfer
     {
-        if (!in_array($transfer->status, ['BORRADOR', 'SOLICITADO', 'APROBADO'], true)) {
+        if (! in_array($transfer->status, ['BORRADOR', 'SOLICITADO', 'APROBADO'], true)) {
             throw new DomainException("No se puede anular un traslado en estado {$transfer->status} porque ya afectó existencias.");
         }
 
         $transfer->update(['status' => 'ANULADO']);
+
         return $transfer->fresh(['items.product', 'items.batch', 'originWarehouse', 'destinationWarehouse']);
     }
 }

@@ -49,21 +49,22 @@ class InventoryController extends Controller
 
         $items = $query->get()->map(function (Inventory $inv) {
             $daysLeft = (int) now()->startOfDay()->diffInDays($inv->batch->expiration_date->startOfDay(), false);
+
             return [
-                'id'                 => $inv->id,
-                'warehouse_id'       => $inv->warehouse_id,
-                'warehouse_name'     => $inv->warehouse->name,
-                'product_id'         => $inv->product_id,
-                'product_sku'        => $inv->product->sku,
-                'product_name'       => $inv->product->name,
-                'unit'               => $inv->product->unit,
+                'id' => $inv->id,
+                'warehouse_id' => $inv->warehouse_id,
+                'warehouse_name' => $inv->warehouse->name,
+                'product_id' => $inv->product_id,
+                'product_sku' => $inv->product->sku,
+                'product_name' => $inv->product->name,
+                'unit' => $inv->product->unit,
                 'is_special_control' => $inv->product->is_special_control,
-                'batch_id'           => $inv->batch_id,
-                'batch_number'       => $inv->batch->batch_number,
-                'expiration_date'    => $inv->batch->expiration_date->toDateString(),
-                'days_remaining'     => $daysLeft,
-                'expiration_status'  => $daysLeft <= 0 ? 'VENCIDO' : ($daysLeft <= 30 ? 'CRITICO_30D' : ($daysLeft <= 90 ? 'ALERTA_90D' : 'VIGENTE')),
-                'quantity'           => $inv->quantity,
+                'batch_id' => $inv->batch_id,
+                'batch_number' => $inv->batch->batch_number,
+                'expiration_date' => $inv->batch->expiration_date->toDateString(),
+                'days_remaining' => $daysLeft,
+                'expiration_status' => $daysLeft <= 0 ? 'VENCIDO' : ($daysLeft <= 30 ? 'CRITICO_30D' : ($daysLeft <= 90 ? 'ALERTA_90D' : 'VIGENTE')),
+                'quantity' => $inv->quantity,
             ];
         });
 
@@ -99,11 +100,11 @@ class InventoryController extends Controller
     public function adjust(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'warehouse_id'   => ['required', 'integer', 'exists:warehouses,id'],
-            'product_id'     => ['required', 'integer', 'exists:products,id'],
-            'batch_id'       => ['required', 'integer', 'exists:batches,id'],
+            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'batch_id' => ['required', 'integer', 'exists:batches,id'],
             'quantity_delta' => ['required', 'integer', 'not_in:0'],
-            'reason'         => ['required', 'string', 'min:5'],
+            'reason' => ['required', 'string', 'min:5'],
         ]);
 
         $inventory = $this->kardexService->adjustInventory(
@@ -117,7 +118,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'message' => 'Ajuste de inventario aplicado y registrado en Kardex (RN-06).',
-            'data'    => $inventory,
+            'data' => $inventory,
         ]);
     }
 }

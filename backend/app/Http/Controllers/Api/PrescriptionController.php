@@ -20,7 +20,7 @@ class PrescriptionController extends Controller
             $search = trim((string) $request->query('search'));
             $query->whereHas('patient', function ($q) use ($search) {
                 $q->where('document_number', 'ILIKE', "%{$search}%")
-                  ->orWhere('full_name', 'ILIKE', "%{$search}%");
+                    ->orWhere('full_name', 'ILIKE', "%{$search}%");
             });
         }
 
@@ -34,34 +34,34 @@ class PrescriptionController extends Controller
         $patientIds = $prescriptions->pluck('patient_id')->unique();
         foreach ($patientIds as $patientId) {
             AuditLog::create([
-                'user_id'        => $request->user()?->id,
-                'patient_id'     => $patientId,
-                'action'         => 'VIEW_PATIENT_PRESCRIPTION',
-                'resource_type'  => 'Prescription',
+                'user_id' => $request->user()?->id,
+                'patient_id' => $patientId,
+                'action' => 'VIEW_PATIENT_PRESCRIPTION',
+                'resource_type' => 'Prescription',
                 'correlation_id' => $request->attributes->get('correlation_id'),
-                'ip_address'     => $request->ip(),
-                'metadata'       => ['role' => $request->user()?->role],
+                'ip_address' => $request->ip(),
+                'metadata' => ['role' => $request->user()?->role],
             ]);
         }
 
         $data = $prescriptions->map(function (Prescription $p) use ($request) {
             return [
-                'id'          => $p->id,
-                'status'      => $p->status,
+                'id' => $p->id,
+                'status' => $p->status,
                 'valid_until' => $p->valid_until->toDateString(),
-                'notes'       => $p->notes,
+                'notes' => $p->notes,
                 'doctor_name' => $p->doctor?->name,
-                'patient'     => (new PatientResource($p->patient))->toArray($request),
-                'items'       => $p->items->map(fn ($item) => [
-                    'id'                  => $item->id,
-                    'product_id'          => $item->product_id,
-                    'product_sku'         => $item->product->sku,
-                    'product_name'        => $item->product->name,
-                    'unit'                => $item->product->unit,
-                    'is_special_control'  => $item->product->is_special_control,
+                'patient' => (new PatientResource($p->patient))->toArray($request),
+                'items' => $p->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_sku' => $item->product->sku,
+                    'product_name' => $item->product->name,
+                    'unit' => $item->product->unit,
+                    'is_special_control' => $item->product->is_special_control,
                     'prescribed_quantity' => $item->prescribed_quantity,
-                    'dispensed_quantity'  => $item->dispensed_quantity,
-                    'pending_quantity'    => $item->prescribed_quantity - $item->dispensed_quantity,
+                    'dispensed_quantity' => $item->dispensed_quantity,
+                    'pending_quantity' => $item->prescribed_quantity - $item->dispensed_quantity,
                 ]),
             ];
         });

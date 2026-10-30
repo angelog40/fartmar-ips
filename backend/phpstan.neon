@@ -1,0 +1,12 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+    level: 1
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#Relation .* is not found in#'
+        - '#Called .env. outside of the config directory#'
+        - '#Access to an undefined property#'

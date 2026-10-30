@@ -28,18 +28,19 @@ class InventoryAlertService
 
         $expiringBatches = $expiringQuery->get()->map(function (Inventory $inv) {
             $daysLeft = (int) now()->startOfDay()->diffInDays($inv->batch->expiration_date->startOfDay(), false);
+
             return [
-                'inventory_id'    => $inv->id,
-                'warehouse_id'    => $inv->warehouse_id,
-                'warehouse_name'  => $inv->warehouse->name,
-                'product_id'      => $inv->product_id,
-                'product_name'    => $inv->product->name,
-                'batch_id'        => $inv->batch_id,
-                'batch_number'    => $inv->batch->batch_number,
+                'inventory_id' => $inv->id,
+                'warehouse_id' => $inv->warehouse_id,
+                'warehouse_name' => $inv->warehouse->name,
+                'product_id' => $inv->product_id,
+                'product_name' => $inv->product->name,
+                'batch_id' => $inv->batch_id,
+                'batch_number' => $inv->batch->batch_number,
                 'expiration_date' => $inv->batch->expiration_date->toDateString(),
-                'days_remaining'  => $daysLeft,
-                'status'          => $daysLeft <= 0 ? 'VENCIDO' : ($daysLeft <= 30 ? 'CRITICO_30D' : 'ALERTA_90D'),
-                'quantity'        => $inv->quantity,
+                'days_remaining' => $daysLeft,
+                'status' => $daysLeft <= 0 ? 'VENCIDO' : ($daysLeft <= 30 ? 'CRITICO_30D' : 'ALERTA_90D'),
+                'quantity' => $inv->quantity,
             ];
         });
 
@@ -54,14 +55,14 @@ class InventoryAlertService
                 'products.sku as product_sku',
                 'products.name as product_name',
                 'warehouse_product_settings.min_stock',
-                DB::raw("COALESCE((
+                DB::raw('COALESCE((
                     SELECT SUM(i.quantity)
                     FROM inventories i
                     JOIN batches b ON i.batch_id = b.id
                     WHERE i.warehouse_id = warehouse_product_settings.warehouse_id
                       AND i.product_id = warehouse_product_settings.product_id
                       AND b.expiration_date > CURRENT_DATE
-                ), 0) as valid_stock")
+                ), 0) as valid_stock'),
             ]);
 
         if ($warehouseId) {
@@ -72,18 +73,18 @@ class InventoryAlertService
             ->filter(fn ($row) => (int) $row->valid_stock < (int) $row->min_stock)
             ->values()
             ->map(fn ($row) => [
-                'warehouse_id'   => (int) $row->warehouse_id,
+                'warehouse_id' => (int) $row->warehouse_id,
                 'warehouse_name' => $row->warehouse_name,
-                'product_id'     => (int) $row->product_id,
-                'product_sku'    => $row->product_sku,
-                'product_name'   => $row->product_name,
-                'min_stock'      => (int) $row->min_stock,
-                'valid_stock'    => (int) $row->valid_stock,
-                'deficit'        => (int) $row->min_stock - (int) $row->valid_stock,
+                'product_id' => (int) $row->product_id,
+                'product_sku' => $row->product_sku,
+                'product_name' => $row->product_name,
+                'min_stock' => (int) $row->min_stock,
+                'valid_stock' => (int) $row->valid_stock,
+                'deficit' => (int) $row->min_stock - (int) $row->valid_stock,
             ]);
 
         return [
-            'expiring_batches'   => $expiringBatches,
+            'expiring_batches' => $expiringBatches,
             'low_stock_products' => $lowStockProducts,
         ];
     }

@@ -36,24 +36,26 @@ class DispensationService
         $allocations = [];
 
         foreach ($inventories as $inv) {
-            if ($remaining <= 0) break;
+            if ($remaining <= 0) {
+                break;
+            }
             $take = min($inv->quantity, $remaining);
             $allocations[] = [
-                'batch_id'        => $inv->batch_id,
-                'batch_number'    => $inv->batch->batch_number,
+                'batch_id' => $inv->batch_id,
+                'batch_number' => $inv->batch->batch_number,
                 'expiration_date' => $inv->batch->expiration_date->toDateString(),
-                'available_qty'   => $inv->quantity,
-                'allocated_qty'   => $take,
+                'available_qty' => $inv->quantity,
+                'allocated_qty' => $take,
             ];
             $remaining -= $take;
         }
 
         return [
-            'product_id'    => $productId,
+            'product_id' => $productId,
             'requested_qty' => $requestedQty,
-            'fulfilled'     => $remaining === 0,
-            'missing_qty'   => $remaining,
-            'allocations'   => $allocations,
+            'fulfilled' => $remaining === 0,
+            'missing_qty' => $remaining,
+            'allocations' => $allocations,
         ];
     }
 
@@ -62,7 +64,7 @@ class DispensationService
      */
     public function dispense(array $payload, User $actor): Dispensation
     {
-        if (!in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
+        if (! in_array($actor->role, ['auxiliar_farmacia', 'regente_farmacia'], true)) {
             throw new DomainException('No tiene permisos para dispensar medicamentos.');
         }
 
@@ -99,7 +101,7 @@ class DispensationService
             // Verificar si algún ítem a dispensar es de control especial (RN-05)
             foreach ($payload['items'] as $itemReq) {
                 $prescItem = $prescription->items->firstWhere('product_id', $itemReq['product_id']);
-                if (!$prescItem) {
+                if (! $prescItem) {
                     throw new DomainException("El producto ID {$itemReq['product_id']} no pertenece a esta prescripción.");
                 }
 
@@ -111,10 +113,10 @@ class DispensationService
             $dispensation = Dispensation::create([
                 'idempotency_key' => $payload['idempotency_key'],
                 'prescription_id' => $prescription->id,
-                'patient_id'      => $prescription->patient_id,
-                'warehouse_id'    => $payload['warehouse_id'],
-                'dispensed_by'    => $actor->id,
-                'authorized_by'   => $authorizerId,
+                'patient_id' => $prescription->patient_id,
+                'warehouse_id' => $payload['warehouse_id'],
+                'dispensed_by' => $actor->id,
+                'authorized_by' => $authorizerId,
             ]);
 
             foreach ($payload['items'] as $itemReq) {
@@ -149,7 +151,9 @@ class DispensationService
                 $remaining = $qtyToDispense;
 
                 foreach ($availableInventories as $inventory) {
-                    if ($remaining <= 0) break;
+                    if ($remaining <= 0) {
+                        break;
+                    }
 
                     $take = min($inventory->quantity, $remaining);
                     $newBalance = $inventory->quantity - $take;
@@ -159,9 +163,9 @@ class DispensationService
 
                     DispensationItem::create([
                         'dispensation_id' => $dispensation->id,
-                        'product_id'      => $inventory->product_id,
-                        'batch_id'        => $inventory->batch_id,
-                        'quantity'        => $take,
+                        'product_id' => $inventory->product_id,
+                        'batch_id' => $inventory->batch_id,
+                        'quantity' => $take,
                     ]);
 
                     // RN-06: Registrar salida inmutable en Kardex
@@ -212,14 +216,14 @@ class DispensationService
         $authorizer = null;
         if ($authorizerEmail) {
             $authorizer = User::where('email', $authorizerEmail)->first();
-            if (!$authorizer || ($authorizerPassword && !Hash::check($authorizerPassword, $authorizer->password))) {
+            if (! $authorizer || ($authorizerPassword && ! Hash::check($authorizerPassword, $authorizer->password))) {
                 throw new DomainException('RN-05: Credenciales del segundo usuario autorizador inválidas.');
             }
         } elseif ($authorizerId) {
             $authorizer = User::find($authorizerId);
         }
 
-        if (!$authorizer) {
+        if (! $authorizer) {
             throw new DomainException('RN-05: Los medicamentos de control especial requieren la autorización de un regente de farmacia.');
         }
 

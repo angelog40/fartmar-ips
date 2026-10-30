@@ -1,0 +1,103 @@
+name: FARTMAR IPS - CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-quality-and-tests:
+    name: Backend (Pint, Larastan & PHPUnit on Postgres 16)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: fartmar
+          POSTGRES_USER: fartmar_user
+          POSTGRES_PASSWORD: fartmar_secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, json, pdo, pdo_pgsql, pgsql, fileinfo
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare Environment
+        run: |
+          cp .env.example .env
+          sed -i 's/DB_HOST=db/DB_HOST=127.0.0.1/g' .env
+          php artisan key:generate
+
+      - name: Run Laravel Pint (Code Style)
+        run: ./vendor/bin/pint --test
+
+      - name: Run Larastan / PHPStan (Static Analysis)
+        run: ./vendor/bin/phpstan analyse --memory-limit=512M
+
+      - name: Run Feature Test Suite on PostgreSQL 16
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: fartmar
+          DB_USERNAME: fartmar_user
+          DB_PASSWORD: fartmar_secret
+          AI_PROVIDER: mock
+        run: php artisan test
+
+  frontend-quality-and-build:
+    name: Frontend (ESLint & TypeScript Build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build Production Bundle
+        run: npm run build
+
+  docker-build-check:
+    name: Docker Multi-Stage Build Check
+    runs-on: ubuntu-latest
+    needs: [backend-quality-and-tests, frontend-quality-and-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker Compose Images
+        run: docker compose build

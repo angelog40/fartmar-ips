@@ -33,8 +33,8 @@ class DatabaseSeeder extends Seeder
             User::updateOrCreate(
                 ['email' => $u['email']],
                 [
-                    'name'     => $u['name'],
-                    'role'     => $u['role'],
+                    'name' => $u['name'],
+                    'role' => $u['role'],
                     'password' => Hash::make('password123'),
                 ]
             );
@@ -120,18 +120,18 @@ class DatabaseSeeder extends Seeder
                         ['quantity' => $qty]
                     );
 
-                    if ($qty > 0 && !KardexMovement::where('warehouse_id', $wh->id)->where('batch_id', $batch->id)->exists()) {
+                    if ($qty > 0 && ! KardexMovement::where('warehouse_id', $wh->id)->where('batch_id', $batch->id)->exists()) {
                         KardexMovement::create([
-                            'warehouse_id'   => $wh->id,
-                            'product_id'     => $product->id,
-                            'batch_id'       => $batch->id,
-                            'type'           => 'ENTRADA',
-                            'quantity'       => $qty,
-                            'balance_after'  => $qty,
+                            'warehouse_id' => $wh->id,
+                            'product_id' => $product->id,
+                            'batch_id' => $batch->id,
+                            'type' => 'ENTRADA',
+                            'quantity' => $qty,
+                            'balance_after' => $qty,
                             'reference_type' => 'SEED_INIT',
-                            'reference_id'   => 1,
-                            'reason'         => 'Inventario inicial de datos semilla',
-                            'user_id'        => $admin->id,
+                            'reference_id' => 1,
+                            'reason' => 'Inventario inicial de datos semilla',
+                            'user_id' => $admin->id,
                         ]);
                     }
                 }
